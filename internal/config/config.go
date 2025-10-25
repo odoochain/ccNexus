@@ -10,10 +10,11 @@ import (
 
 // Endpoint represents a single API endpoint configuration
 type Endpoint struct {
-	Name    string `json:"name"`
-	APIUrl  string `json:"apiUrl"`
-	APIKey  string `json:"apiKey"`
-	Enabled bool   `json:"enabled"`
+	Name           string `json:"name"`
+	APIUrl         string `json:"apiUrl"`
+	APIKey         string `json:"apiKey"`
+	AnthropicModel string `json:"anthropicModel"`
+	Enabled        bool   `json:"enabled"`
 }
 
 // Config represents the application configuration
@@ -31,10 +32,11 @@ func DefaultConfig() *Config {
 		LogLevel: 1, // Default to INFO level
 		Endpoints: []Endpoint{
 			{
-				Name:    "Claude Official",
-				APIUrl:  "api.anthropic.com",
-				APIKey:  "your-api-key-here",
-				Enabled: true,
+				Name:           "Claude Official",
+				APIUrl:         "api.anthropic.com",
+				APIKey:         "your-api-key-here",
+				AnthropicModel: "claude-3-sonnet-20240229",
+				Enabled:        true,
 			},
 		},
 	}
@@ -108,6 +110,33 @@ func (c *Config) UpdateLogLevel(level int) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.LogLevel = level
+}
+
+// GetAnthropicModel returns the AnthropicModel for a specific endpoint (thread-safe)
+func (c *Config) GetAnthropicModel(endpointName string) (string, error) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	for _, ep := range c.Endpoints {
+		if ep.Name == endpointName {
+			return ep.AnthropicModel, nil
+		}
+	}
+	return "", fmt.Errorf("endpoint '%s' not found", endpointName)
+}
+
+// UpdateAnthropicModel updates the AnthropicModel for a specific endpoint (thread-safe)
+func (c *Config) UpdateAnthropicModel(endpointName, model string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	for i, ep := range c.Endpoints {
+		if ep.Name == endpointName {
+			c.Endpoints[i].AnthropicModel = model
+			return nil
+		}
+	}
+	return fmt.Errorf("endpoint '%s' not found", endpointName)
 }
 
 // GetConfigPath returns the default config file path
